@@ -42,16 +42,18 @@ clsAgent = AgentTorcs
 def get_player(agentIdent, viz=False, train=False, dumpdir=None):
     # 由于单机运行torcs实例有限，为了防止某些情况下所有agent产生样本相关性太大，此处加入同样数目的
     # 回放agent，随机播放由训练过程中torcs产生最佳3组episode纪录的
+    import os
+    save_dir_top = os.path.expanduser('~/tmp/torcs/memory')
     if agentIdent < SIMULATOR_PROC:
         pl = clsAgent(agentIdent, is_train=train,
-                      save_dir = '/tmp/torcs/memory/{:04d}'.format(agentIdent),
+                      save_dir = '{}/{:04d}'.format(save_dir_top, agentIdent),
                       min_save_score = 50.,
                       max_save_item = 3,
                       )
     else:
         from autodrive.agent.base import AgentMemoryReplay
         pl = AgentMemoryReplay(agentIdent, is_train=train,
-                               load_dir = '/tmp/torcs/memory/{:04d}'.format(agentIdent-SIMULATOR_PROC),
+                               load_dir = '{}/{:04d}'.format(save_dir_top, agentIdent-SIMULATOR_PROC),
                                max_save_item = 3,
                                )
     return pl
@@ -77,7 +79,7 @@ from tensorpack.tfutils.gradproc import SummaryGradient, GlobalNormClip, MapGrad
 from tensorpack.tfutils import optimizer
 class Model(ModelDesc):
     def _get_inputs(self):
-        return [InputDesc(tf.float32, (None,29), 'state'),
+        return [InputDesc(tf.float32, (None,6), 'state'),
                 InputDesc(tf.float32, (None,2), 'action'),
                 InputDesc(tf.float32, (None,), 'futurereward'),
                 InputDesc(tf.float32, (None,), 'advantage'),
@@ -86,6 +88,8 @@ class Model(ModelDesc):
 
     def _get_NN_prediction(self, state):
         from tensorpack.tfutils import symbolic_functions
+        from tensorpack.tfutils.common import get_global_step_var
+        global_step = get_global_step_var()
         ctx = get_current_tower_context()
         is_training = ctx.is_training
         l = state
@@ -115,9 +119,15 @@ class Model(ModelDesc):
             sigma_accel_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-accel')
             # sigma_beta_steering = symbolic_functions.get_scalar_var('sigma_beta_steering', 0.3, summary=True, trainable=False)
             # sigma_beta_accel = symbolic_functions.get_scalar_var('sigma_beta_accel', 0.3, summary=True, trainable=False)
-            from tensorpack.tfutils.common import get_global_step_var
-            sigma_beta_steering_exp = tf.train.exponential_decay(0.3, get_global_step_var(), 1000, 0.5, name='sigma/beta/steering/exp')
-            sigma_beta_accel_exp = tf.train.exponential_decay(0.5, get_global_step_var(), 5000, 0.5, name='sigma/beta/accel/exp')
+
+            if ctx.name.startswith("tower"):
+                sigma_beta_steering_exp = tf.train.exponential_decay(0.3, global_step, 1000, 0.5, name='sigma/beta/steering/exp')
+                sigma_beta_accel_exp = tf.train.exponential_decay(0.5, global_step, 5000, 0.5, name='sigma/beta/accel/exp')
+            elif ctx.name == '':
+                sigma_beta_steering_exp = 1e-4
+                sigma_beta_accel_exp = 1e-4
+            else: assert(0)
+
             # sigma_steering = tf.minimum(sigma_steering_ + sigma_beta_steering, 0.5)
             # sigma_accel = tf.minimum(sigma_accel_ + sigma_beta_accel, 0.2)
             # sigma_steering = sigma_steering_
@@ -471,7 +481,7 @@ if __name__ == '__main__':
 '''
 Usage:
     main.py train [--gpu GPU] [options]
-    main.py infer  [options]
+    main.py infer  [--gpu GPU] [--load MODULEWEIGHTS] [options]
     main.py test  [options]
 
 Options:
@@ -489,16 +499,11 @@ Options:
     --fake_agent                use fake agent to debug          
 ''', version='0.1')
 
-    # runtrain()
-
-
-
-    def runtrain():
+    if args['train']:
         if args['--gpu']:
             os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(sorted(list(set(args['--gpu'].split(',')))))
         if args['--fake_agent']:
             clsAgent = AgentFake
-        clsAgent = AgentFake
         # os.system('killall -9 torcs-bin')
 
         dirname = '/tmp/torcs/trainlog'
@@ -544,28 +549,38 @@ Options:
         config.predict_tower = predict_tower
 
         trainer(config).train()
-
-    runtrain()
-    if args['train']:
-        runtrain()
-
-
-    if args['infer']:
-        runinfer()
-
-    def runinfer():
+    elif args['infer']:
         assert args['--load'] is not None
         from tensorpack.predict.config import PredictConfig
         from tensorpack.tfutils.sessinit import get_model_loader
-
+        from tensorpack.predict.base import OfflinePredictor
         cfg = PredictConfig(
             model=Model(),
             session_init=get_model_loader(args['--load']),
             input_names=['state'],
-            output_names=['policy'])
+            output_names=['policy', 'value'])
         if args['--target'] == 'play':
+            def play_one_episode(player, func, verbose=False):
+                player.restart_episode()
+                def f(s):
+                    # spc = player.get_action_space()
+                    act = func([[s]])
+                    print('act = {}'.format(act))
+                    # if random.random() < 0.001:
+                    #     act = spc.sample()
+                    if verbose:
+                        print(act)
+                    return act[0][0], act[1][0]
+                return np.mean(player.play_one_episode(f))
+
+
+            def play_model(cfg, player):
+                predfunc = OfflinePredictor(cfg)
+                while True:
+                    score = play_one_episode(player, predfunc)
+                    print("Total:", score)
             pass
-            # play_model(cfg, get_player(viz=0.01))
+            play_model(cfg, get_player(0, train=False))
         # elif args.task == 'eval':
         #     eval_model_multithread(cfg, args.episode, get_player)
         # elif args.task == 'gen_submit':
@@ -573,7 +588,7 @@ Options:
         #         get_player(train=False, dumpdir=args.output),
         #         OfflinePredictor(cfg), args.episode)
             # gym.upload(output, api_key='xxx')
-    if args['test']:
+    elif args['test']:
         if args['--target'] == 'agent':
             from autodrive.agent.torcs import AgentTorcs
         pass
