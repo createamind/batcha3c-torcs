@@ -20,7 +20,7 @@ class AgentTorcs(AgentBase):
 
     @staticmethod
     def initEnv(agentIdent, **kwargs):
-        winpos = (int(320 * (agentIdent % 6)),  240 * int(agentIdent // 6))
+        winpos = (70+int(330 * (agentIdent % 6)), 30+ 280 * int(agentIdent // 6))
         return TorcsEnv(agentIdent, vision=kwargs.get("vision", False),
                                throttle=kwargs.get("throttle", True),
                                gear_change=kwargs.get('gear_change', False),
@@ -98,13 +98,13 @@ class AgentTorcs(AgentBase):
         act_save = np.zeros_like(action)
         act_save[:] = action[:]
         if self._isTrain:
-            action[1] = 0.5
+            # action[1] = 0.5
             # self._exploreEpisode -= self._exploreDecay
             # action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
-            # if action[1] >= 0:
-            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.5 , 1.00, 0.10)
-            # else:
-            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], -0.1, 1.00, 0.05)
+            if action[1] >= 0:
+                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.5 , 1.00, 0.10)
+            else:
+                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], -0.1, 1.00, 0.05)
             # 能否在初期得到比较好的reward决定了收敛的快慢，所以此处加入一些先验
             # 新手上路，方向盘保守一点，带点油门，不踩刹车
             if action[1] < 0 and len(self._histObs) >= 10:
