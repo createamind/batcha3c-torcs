@@ -5,7 +5,7 @@ import numpy as np
 from ..utils import logger
 from .base import AgentBase
 from .simulator.gym_torcs import TorcsEnv
-
+import time
 
 class AgentTorcs(AgentBase):
     @staticmethod
@@ -20,7 +20,7 @@ class AgentTorcs(AgentBase):
 
     @staticmethod
     def initEnv(agentIdent, **kwargs):
-        winpos = (int(640 * (agentIdent % 6)),  480 * int(agentIdent // 6))
+        winpos = (int(320 * (agentIdent % 6)),  240 * int(agentIdent // 6))
         return TorcsEnv(agentIdent, vision=kwargs.get("vision", False),
                                throttle=kwargs.get("throttle", True),
                                gear_change=kwargs.get('gear_change', False),
@@ -29,11 +29,36 @@ class AgentTorcs(AgentBase):
     def _init(self):
         self._torcs = AgentTorcs.initEnv(self._agentIdent, **self._kwargs)
         self._totalSteps = 0
+        self.track_name=''
         if self._isTrain:
             self._exploreEpisode = 1.
             self._exploreDecay = 1. / 100000.
             self._speedHist = []
+            self._set_track()
         super(AgentTorcs, self)._init()
+
+    def _set_track(self):
+        track_list=['aalborg' ,'alpine-2' , 'e-track-1',  'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
+                     'alpine-1' , 'eroad'  ,   'e-track-2' , 'e-track-4'  ,'forza' ,     'g-track-2' , 'ole-road-1' , 'spring'   ,   'wheel-1']
+
+        if self.track_name is '':
+            import random
+            if True: #self.training:
+                t_name =track_list[self._agentIdent%len(track_list)]
+
+
+
+            else:
+                t_name = random.choice(
+                    ['g-track-3', 'e-track-6', 'alpine-1'])
+        else:
+            t_name = self.track_name
+
+        import os, sys
+        os.system('{} {}/simulator/set_track.py -t {} -n {}'.format(sys.executable, os.path.dirname(__file__), t_name, self._agentIdent ))
+        time.sleep(0.3)
+
+
 
     def _reset(self):
         if self._isTrain:
@@ -44,6 +69,7 @@ class AgentTorcs(AgentBase):
             # if self._episodeCount <= 1: # 增加agent之间的异步，防止训练样本相关性太大
             #     self._maxSteps = self._rng.randint(50, 500)
             self._maxStepsCheckBlocking = self._rng.randint(50, 70)
+            self._set_track()
         self._speedMax = 0.
         # memory leak of torcs
         # ob = self._torcs.reset(relaunch=True)
