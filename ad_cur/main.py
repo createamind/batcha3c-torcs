@@ -80,7 +80,7 @@ from tensorpack.tfutils import optimizer
 class Model(ModelDesc):
     def _get_inputs(self):
         return [InputDesc(tf.float32, (None,29), 'state'),
-                InputDesc(tf.float32, (None,2), 'action'),
+                InputDesc(tf.float32, (None,3), 'action'),
                 InputDesc(tf.float32, (None,), 'futurereward'),
                 InputDesc(tf.float32, (None,), 'advantage'),
                 # InputDesc(tf.float32, (None,), 'action_prob'),
@@ -125,7 +125,7 @@ class Model(ModelDesc):
             if ctx.name.startswith("tower"):
                 sigma_beta_steering_exp = tf.train.exponential_decay(0.3, global_step, 1000, 0.5, name='sigma/beta/steering/exp')
                 sigma_beta_accel_exp = tf.train.exponential_decay(0.5, global_step, 5000, 0.5, name='sigma/beta/accel/exp')
-                sigma_beta_brake_exp = tf.train.exponential_decay(0.1, global_setp, 5000, 0.5, name='sigma/beta/brake/exp')
+                sigma_beta_brake_exp = tf.train.exponential_decay(0.1, global_step, 5000, 0.5, name='sigma/beta/brake/exp')
             elif ctx.name == '':
                 sigma_beta_steering_exp = 1e-4
                 sigma_beta_accel_exp = 1e-4
@@ -172,7 +172,7 @@ class Model(ModelDesc):
 
             from tensorflow.contrib.distributions import Normal
             dists = Normal(mus, sigmas+1e-3)
-            actions = tf.squeeze(dists.sample([2]), [0])
+            actions = tf.squeeze(dists.sample([1]), [0])
             # 裁剪到一倍方差之内
             # actions = tf.clip_by_value(actions, -1., 1.)
             if is_training:

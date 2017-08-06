@@ -94,7 +94,7 @@ class AgentTorcs(AgentBase):
 
     def _step(self, predict):
         action, value = predict
-        assert (len(action.shape) == 1 and action.shape[0] == 2)
+        assert (len(action.shape) == 1 and action.shape[0] == 3)
         act_save = np.zeros_like(action)
         act_save[:] = action[:]
         if self._isTrain:
