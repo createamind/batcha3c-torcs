@@ -80,8 +80,8 @@ class AgentTorcs(AgentBase):
     def _selectOb(self, ob):
         self._ob_orig = ob
         self._histObs.append(ob)
-        #ret = np.hstack((ob.angle, ob.track, ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
-        ret = np.hstack((ob.angle,  ob.trackPos, ob.speedX, ob.speedY, ob.speedZ,ob.rpm))
+        ret = np.hstack((ob.angle, ob.track, ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
+        #ret = np.hstack((ob.angle,  ob.trackPos, ob.speedX, ob.speedY, ob.speedZ,ob.rpm))
         
         ret = ret.astype(np.float32)
         # self._data_ob[:, :-1] = self._data_ob[:, 1:]
@@ -129,6 +129,7 @@ class AgentTorcs(AgentBase):
             #     action[0] = np.clip(action[0], -0.3, 0.3)
 
         ob, _reward, is_over, info = self._torcs.step(action)
+        print(ob)
         reward = 0.
         border = 1.2
         speed = ob.speedX * 300.

@@ -304,10 +304,12 @@ class TorcsEnv:
 
     def agent_to_torcs(self, u):
         accel = brake = 0
-        if u[1] > 0:
-            accel = u[1]
-        else:
-            brake = -u[1]
+        # if u[1] > 0:
+        #     accel = u[1]
+        # else:
+        #     brake = -u[1]
+        accel = u[1]
+        brake = u[2]
         torcs_action = {'steer': u[0], 'accel': accel, 'brake': brake}
         return torcs_action
 

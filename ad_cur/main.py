@@ -79,7 +79,7 @@ from tensorpack.tfutils.gradproc import SummaryGradient, GlobalNormClip, MapGrad
 from tensorpack.tfutils import optimizer
 class Model(ModelDesc):
     def _get_inputs(self):
-        return [InputDesc(tf.float32, (None,6), 'state'),
+        return [InputDesc(tf.float32, (None,29), 'state'),
                 InputDesc(tf.float32, (None,2), 'action'),
                 InputDesc(tf.float32, (None,), 'futurereward'),
                 InputDesc(tf.float32, (None,), 'advantage'),
@@ -110,22 +110,26 @@ class Model(ModelDesc):
         with tf.variable_scope('actor') as vs:
             l = tf.stop_gradient(l)
             mu_steering = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-steering')
-            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-accel')
-            mus = tf.concat([mu_steering, mu_accel], axis=-1)
+            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-accel')
+            mu_brake = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-brake')
+            mus = tf.concat([mu_steering, mu_accel, mu_brake], axis=-1)
             # mus = tf.layers.dense(l, 2, activation=tf.nn.tanh, name='fc-mus')
             # sigmas = tf.layers.dense(l, 2, activation=tf.nn.softplus, name='fc-sigmas')
             # sigmas = tf.clip_by_value(sigmas, -0.001, 0.5)
             sigma_steering_ = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-steering')
             sigma_accel_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-accel')
+            sigma_brake_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-brake')
             # sigma_beta_steering = symbolic_functions.get_scalar_var('sigma_beta_steering', 0.3, summary=True, trainable=False)
             # sigma_beta_accel = symbolic_functions.get_scalar_var('sigma_beta_accel', 0.3, summary=True, trainable=False)
 
             if ctx.name.startswith("tower"):
                 sigma_beta_steering_exp = tf.train.exponential_decay(0.3, global_step, 1000, 0.5, name='sigma/beta/steering/exp')
                 sigma_beta_accel_exp = tf.train.exponential_decay(0.5, global_step, 5000, 0.5, name='sigma/beta/accel/exp')
+                sigma_beta_brake_exp = tf.train.exponential_decay(0.1, global_setp, 5000, 0.5, name='sigma/beta/brake/exp')
             elif ctx.name == '':
                 sigma_beta_steering_exp = 1e-4
                 sigma_beta_accel_exp = 1e-4
+                sigma_beta_brake_exp = 1e-4
             else: assert(0)
 
             # sigma_steering = tf.minimum(sigma_steering_ + sigma_beta_steering, 0.5)
@@ -133,9 +137,10 @@ class Model(ModelDesc):
             # sigma_steering = sigma_steering_
             sigma_steering = (sigma_steering_ + sigma_beta_steering_exp)
             sigma_accel = (sigma_accel_ + sigma_beta_accel_exp) #* 0.1
+            sigma_brake = (sigma_brake_ + sigma_beta_brake_exp)
             # sigma_steering = sigma_steering_
             # sigma_accel = sigma_accel_
-            sigmas = tf.concat([sigma_steering, sigma_accel], axis=-1)
+            sigmas = tf.concat([sigma_steering, sigma_accel, sigma_brake], axis=-1)
             #     sigma_steering = tf.clip_by_value(sigma_steering, 0.1, 0.5)
 
             #     sigma_accel = tf.clip_by_value(sigma_accel, 0.1, 0.5)
@@ -167,7 +172,7 @@ class Model(ModelDesc):
 
             from tensorflow.contrib.distributions import Normal
             dists = Normal(mus, sigmas+1e-3)
-            actions = tf.squeeze(dists.sample([1]), [0])
+            actions = tf.squeeze(dists.sample([2]), [0])
             # 裁剪到一倍方差之内
             # actions = tf.clip_by_value(actions, -1., 1.)
             if is_training:
@@ -506,7 +511,7 @@ Options:
             clsAgent = AgentFake
         # os.system('killall -9 torcs-bin')
 
-        dirname = '/tmp/torcs/trainlog'
+        dirname = '~/tmp/torcs/trainlog'
         from tensorpack.utils import logger
         logger.set_logger_dir(dirname, action='k' if args['--continue'] else 'b')
         logger.info("Backup source to {}/source/".format(logger.LOG_DIR))
@@ -514,7 +519,7 @@ Options:
         os.system('rm -f {}/sim-*; mkdir -p {}/source; rsync -a --exclude="core*" --exclude="cmake*" --exclude="build" {} {}/source/'
                   .format(source_dir, logger.LOG_DIR, source_dir, logger.LOG_DIR))
         if not args['--continue']:
-            os.system('rm -rf /tmp/torcs/memory')
+            os.system('rm -rf ~/tmp/torcs/memory')
         os.system('rm -f /tmp/torcs_run/*.pid')
 
         logger.info("Create simulators, please wait...")
