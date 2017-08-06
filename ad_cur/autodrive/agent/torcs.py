@@ -38,7 +38,7 @@ class AgentTorcs(AgentBase):
         super(AgentTorcs, self)._init()
 
     def _set_track(self):
-        track_list=['aalborg' ,'alpine-2' , 'e-track-1',  'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
+        track_list=['aalborg' ,'alpine-2' , 'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
                      'alpine-1' , 'eroad'  ,   'e-track-2' , 'e-track-4'  ,'forza' ,     'g-track-2' , 'ole-road-1' , 'spring'   ,   'wheel-1']
 
         if self.track_name is '':
@@ -101,10 +101,11 @@ class AgentTorcs(AgentBase):
             # action[1] = 0.5
             # self._exploreEpisode -= self._exploreDecay
             # action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
-            if action[1] >= 0:
-                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.5 , 1.00, 0.10)
-            else:
-                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], -0.1, 1.00, 0.05)
+            #if action[1] >= 0:
+            action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.5 , 1.00, 0.10)
+            #else:
+            action[2] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], -0.1, 1.00, 0.05)
+            action[2] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.2 , 1.00, 0.10)
             # 能否在初期得到比较好的reward决定了收敛的快慢，所以此处加入一些先验
             # 新手上路，方向盘保守一点，带点油门，不踩刹车
             if action[1] < 0 and len(self._histObs) >= 10:

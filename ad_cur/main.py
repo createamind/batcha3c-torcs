@@ -403,7 +403,7 @@ class MySimulatorMaster(SimulatorMaster, Callback):
         advantages = rewards + GAMMA * values_plus[1:] - values_plus[:-1]
 
         for idx, k in enumerate(mem):
-            k.action[2]=0
+            #k.action[2]=0
             self.queue.put([k.state, k.action, discounted_rewards[idx], advantages[idx]])
         # mem.reverse()
         # R = float(init_r)
