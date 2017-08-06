@@ -309,7 +309,7 @@ class TorcsEnv:
         # else:
         #     brake = -u[1]
         accel = u[1]
-        brake = u[2]
+        #brake = u[2]
         torcs_action = {'steer': u[0], 'accel': accel, 'brake': brake}
         return torcs_action
 
