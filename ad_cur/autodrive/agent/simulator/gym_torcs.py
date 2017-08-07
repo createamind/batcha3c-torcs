@@ -61,7 +61,7 @@ class TorcsEnv:
                 os.killpg(os.getpgid(pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            time.sleep(0.5)
+            time.sleep(1)
             logger.info("torcs {} is killed".format(pid))
             self.torcs_proc = None
         window_title = str(self.port)
@@ -92,13 +92,13 @@ class TorcsEnv:
                             f.writelines([str(self.torcs_proc.pid)])
                             f.flush()
 
-                time.sleep(1.)
+                time.sleep(1.3)
                 cmd = 'sh {}/autostart.sh {}'.format(os.path.dirname(__file__), window_title)
                 if self.winpos is not None:
                     assert(len(self.winpos) == 2)
                     cmd += ' {} {}'.format(self.winpos[0], self.winpos[1])
                 os.system(cmd)
-                time.sleep(1.)
+                time.sleep(1.3)
         except filelock.Timeout:
             logger.error("can not lock file {}".format(lockfile))
 
