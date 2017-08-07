@@ -30,7 +30,7 @@ class AgentTorcs(AgentBase):
     def _init(self):
         self._torcs = AgentTorcs.initEnv(self._agentIdent, **self._kwargs)
         self._totalSteps = 0
-        self.track_name=''
+        self.track_name='aalborg'
         if self._isTrain:
             self._exploreEpisode = 1.
             self._exploreDecay = 1. / 100000.
@@ -167,7 +167,7 @@ class AgentTorcs(AgentBase):
         if trackLoss < -1e-4 or trackPosLoss < -1e-4:
             # 不奖励离开车道的行为
             # reward  = -0.1
-            if self._speedMax < (60./300.):
+            if self._speedMax < (20./300.):
                 reward = -1.
                 is_over = True
         #     if reward >= 0.: reward *= 0.5
