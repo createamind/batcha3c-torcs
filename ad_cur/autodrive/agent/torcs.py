@@ -30,7 +30,7 @@ class AgentTorcs(AgentBase):
     def _init(self):
         self._torcs = AgentTorcs.initEnv(self._agentIdent, **self._kwargs)
         self._totalSteps = 0
-        self.track_name='aalborg'
+        self.track_name=''
         if self._isTrain:
             self._exploreEpisode = 1.
             self._exploreDecay = 1. / 100000.

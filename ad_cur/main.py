@@ -487,7 +487,7 @@ if __name__ == '__main__':
     args = docopt.docopt(
 '''
 Usage:
-    main.py train [--gpu GPU] [options]
+    main.py train [--gpu GPU] [--load MODULEWEIGHTS] [options]
     main.py infer  [--gpu GPU] [--load MODULEWEIGHTS] [options]
     main.py test  [options]
 
@@ -512,6 +512,7 @@ Options:
         if args['--fake_agent']:
             clsAgent = AgentFake
         # os.system('killall -9 torcs-bin')
+
 
         dirname = '~/tmp/torcs/trainlog'
         from tensorpack.utils import logger
