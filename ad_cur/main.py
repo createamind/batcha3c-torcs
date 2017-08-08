@@ -110,7 +110,7 @@ class Model(ModelDesc):
         with tf.variable_scope('actor') as vs:
             l = tf.stop_gradient(l)
             mu_steering = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-steering')
-            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-accel')
+            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-accel')
             mu_brake = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-brake')
             mus = tf.concat([mu_steering, mu_accel, mu_brake], axis=-1)
             # mus = tf.layers.dense(l, 2, activation=tf.nn.tanh, name='fc-mus')
