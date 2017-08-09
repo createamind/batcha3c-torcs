@@ -329,32 +329,13 @@ class TorcsEnv:
 
     def make_observaton(self, raw_obs):
         if self.vision is False:
-            # names = ['focus',
-            #          'speedX', 'speedY', 'speedZ', 'angle', 'damage',
-            #          'opponents',
-            #          'rpm',
-            #          'track',
-            #          'trackPos',
-            #          'wheelSpinVel']
-            # Observation = col.namedtuple('Observaion', names)
-            # return Observation(focus=np.array(raw_obs['focus'], dtype=np.float32)/200.,
-            #                    speedX=np.array(raw_obs['speedX'], dtype=np.float32)/300.0,
-            #                    speedY=np.array(raw_obs['speedY'], dtype=np.float32)/300.0,
-            #                    speedZ=np.array(raw_obs['speedZ'], dtype=np.float32)/300.0,
-            #                    angle=np.array(raw_obs['angle'], dtype=np.float32)/3.1416,
-            #                    damage=np.array(raw_obs['damage'], dtype=np.float32),
-            #                    opponents=np.array(raw_obs['opponents'], dtype=np.float32)/200.,
-            #                    rpm=np.array(raw_obs['rpm'], dtype=np.float32)/10000,
-            #                    track=np.array(raw_obs['track'], dtype=np.float32)/200.,
-            #                    trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.,
-            #                    wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
-
             names = ['focus',
                      'speedX', 'speedY', 'speedZ', 'angle', 'damage',
                      'opponents',
                      'rpm',
-                     'trackPos']
-                     #'wheelSpinVel']
+                     'track',
+                     'trackPos',
+                     'wheelSpinVel']
             Observation = col.namedtuple('Observaion', names)
             return Observation(focus=np.array(raw_obs['focus'], dtype=np.float32)/200.,
                                speedX=np.array(raw_obs['speedX'], dtype=np.float32)/300.0,
@@ -364,9 +345,9 @@ class TorcsEnv:
                                damage=np.array(raw_obs['damage'], dtype=np.float32),
                                opponents=np.array(raw_obs['opponents'], dtype=np.float32)/200.,
                                rpm=np.array(raw_obs['rpm'], dtype=np.float32)/10000,
-                               #track=np.array(raw_obs['track'], dtype=np.float32)/200.,
-                               trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.)
-                               #wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
+                               track=np.array(raw_obs['track'], dtype=np.float32)/200.,
+                               trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.,
+                               wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
 
 
 

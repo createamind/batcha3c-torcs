@@ -43,7 +43,7 @@ def get_player(agentIdent, viz=False, train=False, dumpdir=None):
     # 由于单机运行torcs实例有限，为了防止某些情况下所有agent产生样本相关性太大，此处加入同样数目的
     # 回放agent，随机播放由训练过程中torcs产生最佳3组episode纪录的
     import os
-    save_dir_top = os.path.expanduser('~/tmp/torcs/memory')
+    save_dir_top = os.path.expanduser('/tmp/torcs/memory')
     if agentIdent < SIMULATOR_PROC:
         pl = clsAgent(agentIdent, is_train=train,
                       save_dir = '{}/{:04d}'.format(save_dir_top, agentIdent),
@@ -93,7 +93,7 @@ class Model(ModelDesc):
         ctx = get_current_tower_context()
         is_training = ctx.is_training
         l = state
-        l = tf.Print(l, [state], 'State = ')
+        #l = tf.Print(l, [state], 'State = ')
         with tf.variable_scope('critic') as vs:
             from autodrive.model.selu import fc_selu
             for lidx in range(8):
