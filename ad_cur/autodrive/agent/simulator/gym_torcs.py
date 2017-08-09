@@ -61,7 +61,7 @@ class TorcsEnv:
                 os.killpg(os.getpgid(pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            time.sleep(0.5)
+            time.sleep(1.2)
             logger.info("torcs {} is killed".format(pid))
             self.torcs_proc = None
         window_title = str(self.port)
@@ -92,13 +92,13 @@ class TorcsEnv:
                             f.writelines([str(self.torcs_proc.pid)])
                             f.flush()
 
-                time.sleep(1.)
+                time.sleep(1.3)
                 cmd = 'sh {}/autostart.sh {}'.format(os.path.dirname(__file__), window_title)
                 if self.winpos is not None:
                     assert(len(self.winpos) == 2)
                     cmd += ' {} {}'.format(self.winpos[0], self.winpos[1])
                 os.system(cmd)
-                time.sleep(1.)
+                time.sleep(1.3)
         except filelock.Timeout:
             logger.error("can not lock file {}".format(lockfile))
 
@@ -329,13 +329,32 @@ class TorcsEnv:
 
     def make_observaton(self, raw_obs):
         if self.vision is False:
+            # names = ['focus',
+            #          'speedX', 'speedY', 'speedZ', 'angle', 'damage',
+            #          'opponents',
+            #          'rpm',
+            #          'track',
+            #          'trackPos',
+            #          'wheelSpinVel']
+            # Observation = col.namedtuple('Observaion', names)
+            # return Observation(focus=np.array(raw_obs['focus'], dtype=np.float32)/200.,
+            #                    speedX=np.array(raw_obs['speedX'], dtype=np.float32)/300.0,
+            #                    speedY=np.array(raw_obs['speedY'], dtype=np.float32)/300.0,
+            #                    speedZ=np.array(raw_obs['speedZ'], dtype=np.float32)/300.0,
+            #                    angle=np.array(raw_obs['angle'], dtype=np.float32)/3.1416,
+            #                    damage=np.array(raw_obs['damage'], dtype=np.float32),
+            #                    opponents=np.array(raw_obs['opponents'], dtype=np.float32)/200.,
+            #                    rpm=np.array(raw_obs['rpm'], dtype=np.float32)/10000,
+            #                    track=np.array(raw_obs['track'], dtype=np.float32)/200.,
+            #                    trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.,
+            #                    wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
+
             names = ['focus',
                      'speedX', 'speedY', 'speedZ', 'angle', 'damage',
                      'opponents',
                      'rpm',
-                     'track',
-                     'trackPos',
-                     'wheelSpinVel']
+                     'trackPos']
+                     #'wheelSpinVel']
             Observation = col.namedtuple('Observaion', names)
             return Observation(focus=np.array(raw_obs['focus'], dtype=np.float32)/200.,
                                speedX=np.array(raw_obs['speedX'], dtype=np.float32)/300.0,
@@ -345,9 +364,12 @@ class TorcsEnv:
                                damage=np.array(raw_obs['damage'], dtype=np.float32),
                                opponents=np.array(raw_obs['opponents'], dtype=np.float32)/200.,
                                rpm=np.array(raw_obs['rpm'], dtype=np.float32)/10000,
-                               track=np.array(raw_obs['track'], dtype=np.float32)/200.,
-                               trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.,
-                               wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
+                               #track=np.array(raw_obs['track'], dtype=np.float32)/200.,
+                               trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.)
+                               #wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
+
+
+
         else:
             assert(0)
             names = ['focus',

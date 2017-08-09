@@ -93,7 +93,7 @@ class Model(ModelDesc):
         ctx = get_current_tower_context()
         is_training = ctx.is_training
         l = state
-        # l = tf.Print(l, [state], 'State = ')
+        l = tf.Print(l, [state], 'State = ')
         with tf.variable_scope('critic') as vs:
             from autodrive.model.selu import fc_selu
             for lidx in range(8):
