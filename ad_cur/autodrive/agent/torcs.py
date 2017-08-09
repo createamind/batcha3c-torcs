@@ -101,10 +101,10 @@ class AgentTorcs(AgentBase):
             # action[1] = 0.5
             # self._exploreEpisode -= self._exploreDecay
             # action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
-            if action[1] >= 0:
-                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], 0.5 , 1.00, 0.10)
-            else:
-                action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], -0.1, 1.00, 0.05)
+            # if action[1] >= 0:
+            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], 0.5 , 1.00, 0.10)
+            # else:
+            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], -0.1, 1.00, 0.05)
             # 能否在初期得到比较好的reward决定了收敛的快慢，所以此处加入一些先验
             # 新手上路，方向盘保守一点，带点油门，不踩刹车
             if action[1] < 0 and len(self._histObs) >= 10:
