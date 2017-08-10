@@ -79,7 +79,7 @@ from tensorpack.tfutils.gradproc import SummaryGradient, GlobalNormClip, MapGrad
 from tensorpack.tfutils import optimizer
 class Model(ModelDesc):
     def _get_inputs(self):
-        return [InputDesc(tf.float32, (None,29), 'state'),
+        return [InputDesc(tf.float32, (None,12), 'state'),
                 InputDesc(tf.float32, (None,3), 'action'),
                 InputDesc(tf.float32, (None,), 'futurereward'),
                 InputDesc(tf.float32, (None,), 'advantage'),
@@ -487,7 +487,7 @@ if __name__ == '__main__':
     args = docopt.docopt(
 '''
 Usage:
-    main.py train [--gpu GPU] [options]
+    main.py train [--gpu GPU] [--load MODULEWEIGHTS]  [options]
     main.py infer  [--gpu GPU] [--load MODULEWEIGHTS] [options]
     main.py test  [options]
 

@@ -74,14 +74,14 @@ class AgentTorcs(AgentBase):
         self._speedMax = 0.
         # memory leak of torcs
         # ob = self._torcs.reset(relaunch=True)
-        ob = self._torcs.reset(relaunch=(self._episodeCount%300==299))
+        ob = self._torcs.reset(relaunch=(self._episodeCount%30==0))
         self._data_ob = np.zeros((29, 4), dtype=np.float32)
         return self._selectOb(ob)
 
     def _selectOb(self, ob):
         self._ob_orig = ob
         self._histObs.append(ob)
-        ret = np.hstack((ob.angle, ob.track, ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
+        ret = np.hstack((ob.angle, ob.focus.min(), ob.damage/1500. , ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
         #ret = np.hstack((ob.angle,  ob.trackPos, ob.speedX, ob.speedY, ob.speedZ,ob.rpm))
         
         ret = ret.astype(np.float32)
@@ -145,7 +145,13 @@ class AgentTorcs(AgentBase):
         logger.info("steering loss = {:.04f}, steering={:.4f}, trackPos={:.4f}".format(steeringLoss, action[0], ob.trackPos))
         reward -= steeringLoss
 
-        # if self._episodeSteps <= 30 and ob.damage > 0.:
+        # if self._episodeSteps <= 30 and 
+        if ob.damage > 155.:
+            reward = -5
+        if ob.damage > 845. :
+            reward = -10
+        if ob.damage >  1450. :
+            is_over = True
         #     is_over = True
         if self._speedMax < ob.speedX: self._speedMax = ob.speedX
         # if self._speedMax >= (50 / 300.) and ob.speedX <= (15. / 300.):  #
@@ -167,7 +173,7 @@ class AgentTorcs(AgentBase):
         if trackLoss < -1e-4 or trackPosLoss < -1e-4:
             # 不奖励离开车道的行为
             # reward  = -0.1
-            if self._speedMax < (60./300.):
+            if self._speedMax < (5./300.):
                 reward = -1.
                 is_over = True
         #     if reward >= 0.: reward *= 0.5
