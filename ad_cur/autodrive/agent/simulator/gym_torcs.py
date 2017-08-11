@@ -9,6 +9,7 @@ import os
 import subprocess
 import time
 import signal
+import tensorflow as tf
 
 from ...utils import logger
 
@@ -118,9 +119,9 @@ class TorcsEnv:
 
         ##print("launch torcs")
 
-            # time.sleep(0.5)
+        time.sleep(0.5)
         self.start_torcs_process()
-            # time.sleep(0.5)
+        time.sleep(0.5)
 
         """
         # Modify here if you use multiple tracks in the environment
@@ -251,6 +252,7 @@ class TorcsEnv:
         if np.cos(obs['angle']) < 0: # Episode is terminated if the agent runs backward
             episode_terminate = True
             client.R.d['meta'] = True
+            tf.Print(obs['angle'], [obs['angle']], 'angle over is = ')
 
 
         if client.R.d['meta'] is True: # Send a reset signal

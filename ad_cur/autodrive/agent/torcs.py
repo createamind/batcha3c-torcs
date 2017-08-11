@@ -7,6 +7,7 @@ from .base import AgentBase
 from .simulator.gym_torcs import TorcsEnv
 import time
 import random
+import tensorflow as tf
 
 class AgentTorcs(AgentBase):
     @staticmethod
@@ -39,7 +40,7 @@ class AgentTorcs(AgentBase):
         super(AgentTorcs, self)._init()
 
     def _set_track(self):
-        track_list=['aalborg' ,'alpine-2' , 'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
+        track_list=['aalborg' , 'aalborg','aalborg', 'alpine-2' , 'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
                      'alpine-1' , 'eroad'  ,   'e-track-2' , 'e-track-4'  ,'forza' ,     'g-track-2' , 'ole-road-1' , 'spring'   ,   'wheel-1']
 
         if self.track_name is '':
@@ -74,7 +75,7 @@ class AgentTorcs(AgentBase):
         self._speedMax = 0.
         # memory leak of torcs
         # ob = self._torcs.reset(relaunch=True)
-        ob = self._torcs.reset(relaunch=(self._episodeCount%30==0))
+        ob = self._torcs.reset(relaunch=(self._episodeCount%137==135))
         self._data_ob = np.zeros((29, 4), dtype=np.float32)
         return self._selectOb(ob)
 
@@ -104,7 +105,7 @@ class AgentTorcs(AgentBase):
             #action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
             #action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], 0.5 , 1.00, 0.10)
             action[2]=0
-            if random.random() <= 0.05:
+            if random.random() <= 0.10:
                 action[2] = max(self._exploreEpisode, 0) * self._ouProcess(action[2], 0.2 , 1.00, 0.10)
             # 能否在初期得到比较好的reward决定了收敛的快慢，所以此处加入一些先验
             # 新手上路，方向盘保守一点，带点油门，不踩刹车
@@ -152,6 +153,9 @@ class AgentTorcs(AgentBase):
             reward = -10
         if ob.damage >  1450. :
             is_over = True
+            tf.Print(ob.damage, [ob.damage], 'damage over is  = ')
+            logger.info("damage ={}".format(ob.damage))
+
         #     is_over = True
         if self._speedMax < ob.speedX: self._speedMax = ob.speedX
         # if self._speedMax >= (50 / 300.) and ob.speedX <= (15. / 300.):  #
@@ -173,9 +177,11 @@ class AgentTorcs(AgentBase):
         if trackLoss < -1e-4 or trackPosLoss < -1e-4:
             # 不奖励离开车道的行为
             # reward  = -0.1
-            if self._speedMax < (5./300.):
+            if self._speedMax < (1./300.):
                 reward = -1.
                 is_over = True
+                tf.Print(self._speedMax, [self._speedMax], '_speedMax over is  = ')
+
         #     if reward >= 0.: reward *= 0.5
         #     if trackLoss < 0:
         #         reward += trackLoss

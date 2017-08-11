@@ -13,7 +13,7 @@ import tensorflow as tf
 from autodrive.utils import logger
 from simulator import *
 from six.moves import queue
-
+# from agent.torcs import AgentTorcs
 if six.PY3:
     from concurrent import futures
     CancelledError = futures.CancelledError
@@ -57,6 +57,7 @@ def get_player(agentIdent, viz=False, train=False, dumpdir=None):
                                max_save_item = 3,
                                )
     return pl
+
 
 
 from simulator import SimulatorProcess
@@ -285,7 +286,7 @@ class Model(ModelDesc):
                    (3, lr_init * 0.5),
                    (4, lr_init * 0.25),
                    (5, lr_init * 0.128),
-                   # (100, lr_init/16),
+                   (100, lr_init/80),
                    ]
             for idx in range(len(lrs) - 1):
                 if epoch >= lrs[idx][0] and epoch < lrs[idx+1][0]:
@@ -561,13 +562,14 @@ Options:
         from tensorpack.predict.config import PredictConfig
         from tensorpack.tfutils.sessinit import get_model_loader
         from tensorpack.predict.base import OfflinePredictor
+        M=Model()
         cfg = PredictConfig(
-            model=Model(),
+            model=M,
             session_init=get_model_loader(args['--load']),
             input_names=['state'],
             output_names=['policy', 'value'])
         if args['--target'] == 'play':
-            def play_one_episode(player, func, verbose=False):
+            def play_one_episode(player, func, verbose=True):
                 player.restart_episode()
                 def f(s):
                     # spc = player.get_action_space()
@@ -586,8 +588,8 @@ Options:
                 while True:
                     score = play_one_episode(player, predfunc)
                     print("Total:", score)
-            pass
-            play_model(cfg, get_player(0, train=False))
+        # predfunc = OfflinePredictor(cfg)
+
         # elif args.task == 'eval':
         #     eval_model_multithread(cfg, args.episode, get_player)
         # elif args.task == 'gen_submit':
