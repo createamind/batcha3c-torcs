@@ -113,7 +113,7 @@ class Model(ModelDesc):
             mu_steering = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-steering')
             mu_accel = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-accel')
             mu_brake = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-brake')
-            mus = tf.concat([mu_steering, mu_accel, mu_brake], axis=-1)
+            mus = tf.concat([mu_steering, mu_accel, mu_brake], axis=-1,name='infer_actions')
             # mus = tf.layers.dense(l, 2, activation=tf.nn.tanh, name='fc-mus')
             # sigmas = tf.layers.dense(l, 2, activation=tf.nn.softplus, name='fc-sigmas')
             # sigmas = tf.clip_by_value(sigmas, -0.001, 0.5)
@@ -571,7 +571,7 @@ Options:
             model=M,
             session_init=get_model_loader(args['--load']),
             input_names=['state'],
-            output_names=['policy', 'value'])
+            output_names=['acor/infer_actions', 'value'])
         if args['--target'] == 'play':
             def play_one_episode(player, func, verbose=True):
                 player.restart_episode()
