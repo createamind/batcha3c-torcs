@@ -32,11 +32,13 @@ class AgentTorcs(AgentBase):
         self._torcs = AgentTorcs.initEnv(self._agentIdent, **self._kwargs)
         self._totalSteps = 0
         self.track_name=''
+        self._infer=True
         if self._isTrain:
             self._exploreEpisode = 1.
             self._exploreDecay = 1. / 100000.
             self._speedHist = []
             self._set_track()
+            self._infer=False
         super(AgentTorcs, self)._init()
 
     def _set_track(self):
@@ -81,7 +83,9 @@ class AgentTorcs(AgentBase):
 
     def _selectOb(self, ob):
         self._ob_orig = ob
-        self._histObs.append(ob)
+        if self._isTrain:
+            
+            self._histObs.append(ob)
         ret = np.hstack((ob.angle, ob.focus.min(), ob.damage/1500. , ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
         #ret = np.hstack((ob.angle,  ob.trackPos, ob.speedX, ob.speedY, ob.speedZ,ob.rpm))
         
@@ -96,6 +100,13 @@ class AgentTorcs(AgentBase):
 
     def _step(self, predict):
         action, value = predict
+        logger.info("output from model  ={}".format(action))
+        if self._infer :    
+            action[2]=0
+            if action[1] < 0.1:
+                action[1] = 0.1
+            inferaction=action
+        
         assert (len(action.shape) == 1 and action.shape[0] == 3)
         act_save = np.zeros_like(action)
         act_save[:] = action[:]
@@ -130,7 +141,12 @@ class AgentTorcs(AgentBase):
             # elif self._speedMax < (200/300.):
             #     action[0] = np.clip(action[0], -0.3, 0.3)
 
-        ob, _reward, is_over, info = self._torcs.step(action)
+        
+        if self._infer :
+            ob, _reward, is_over, info = self._torcs.step(inferaction)
+        else:
+            ob, _reward, is_over, info = self._torcs.step(action)
+
         print(ob)
         reward = 0.
         border = 1.2

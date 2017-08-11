@@ -563,6 +563,10 @@ Options:
         from tensorpack.tfutils.sessinit import get_model_loader
         from tensorpack.predict.base import OfflinePredictor
         M=Model()
+        player=AgentTorcs(2, is_train=False,
+                      min_save_score = 50.,
+                      max_save_item = 3,
+                      )
         cfg = PredictConfig(
             model=M,
             session_init=get_model_loader(args['--load']),
@@ -574,7 +578,8 @@ Options:
                 def f(s):
                     # spc = player.get_action_space()
                     act = func([[s]])
-                    print('act = {}'.format(act))
+                    tf.Print(act[1],[act[1]] ,'action  is  = ')
+                    # tf.Print('**************\n act = {}'.format(act))
                     # if random.random() < 0.001:
                     #     act = spc.sample()
                     if verbose:
@@ -588,6 +593,7 @@ Options:
                 while True:
                     score = play_one_episode(player, predfunc)
                     print("Total:", score)
+            play_model(cfg,player )
         # predfunc = OfflinePredictor(cfg)
 
         # elif args.task == 'eval':

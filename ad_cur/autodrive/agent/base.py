@@ -73,6 +73,8 @@ class AgentBase(GymEnv):
             self.finish_episode()
             if self.auto_restart:
                 self.restart_episode()
+        if not self._isTrain:
+            return r, isOver
         return act, r, isOver
 
     @abc.abstractmethod
