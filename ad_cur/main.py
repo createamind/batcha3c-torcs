@@ -571,7 +571,7 @@ Options:
             model=M,
             session_init=get_model_loader(args['--load']),
             input_names=['state'],
-            output_names=['acor/infer_actions', 'value'])
+            output_names=['actor/infer_actions', 'value'])
         if args['--target'] == 'play':
             def play_one_episode(player, func, verbose=True):
                 player.restart_episode()

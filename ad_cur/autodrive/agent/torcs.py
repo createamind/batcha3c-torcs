@@ -103,8 +103,8 @@ class AgentTorcs(AgentBase):
         logger.info("output from model  ={}".format(action))
         if self._infer :    
             action[2]=0
-            if action[1] < 0.1:
-                action[1] = 0.1
+            if self._ob_orig.speedX*300 < 40:
+                action[1] = 0.3
             inferaction=action
         
         assert (len(action.shape) == 1 and action.shape[0] == 3)
