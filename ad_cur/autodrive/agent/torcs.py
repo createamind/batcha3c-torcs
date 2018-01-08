@@ -5,9 +5,7 @@ import numpy as np
 from ..utils import logger
 from .base import AgentBase
 from .simulator.gym_torcs import TorcsEnv
-import time
-import random
-import tensorflow as tf
+
 
 class AgentTorcs(AgentBase):
     @staticmethod
@@ -22,7 +20,7 @@ class AgentTorcs(AgentBase):
 
     @staticmethod
     def initEnv(agentIdent, **kwargs):
-        winpos = (70+int(330 * (agentIdent % 6)), 30+ 280 * int(agentIdent // 6))
+        winpos = (int(640 * (agentIdent % 6)),  480 * int(agentIdent // 6))
         return TorcsEnv(agentIdent, vision=kwargs.get("vision", False),
                                throttle=kwargs.get("throttle", True),
                                gear_change=kwargs.get('gear_change', False),
@@ -31,38 +29,11 @@ class AgentTorcs(AgentBase):
     def _init(self):
         self._torcs = AgentTorcs.initEnv(self._agentIdent, **self._kwargs)
         self._totalSteps = 0
-        self.track_name=''
-        self._infer=True
         if self._isTrain:
             self._exploreEpisode = 1.
             self._exploreDecay = 1. / 100000.
             self._speedHist = []
-            self._set_track()
-            self._infer=False
         super(AgentTorcs, self)._init()
-
-    def _set_track(self):
-        track_list=['aalborg' , 'aalborg','aalborg', 'alpine-2' , 'e-track-3' , 'e-track-6' , 'g-track-1' , 'g-track-3' ,  'ruudskogen' , 'street-1' , 'wheel-2',\
-                     'alpine-1' , 'eroad'  ,   'e-track-2' , 'e-track-4'  ,'forza' ,     'g-track-2' , 'ole-road-1' , 'spring'   ,   'wheel-1']
-
-        if self.track_name is '':
-            import random
-            if True: #self.training:
-                t_name =track_list[self._agentIdent%len(track_list)]
-
-
-
-            else:
-                t_name = random.choice(
-                    ['g-track-3', 'e-track-6', 'alpine-1'])
-        else:
-            t_name = self.track_name
-
-        import os, sys
-        os.system('{} {}/simulator/set_track.py -t {} -n {}'.format(sys.executable, os.path.dirname(__file__), t_name, self._agentIdent ))
-        time.sleep(0.3)
-
-
 
     def _reset(self):
         if self._isTrain:
@@ -73,22 +44,18 @@ class AgentTorcs(AgentBase):
             # if self._episodeCount <= 1: # 增加agent之间的异步，防止训练样本相关性太大
             #     self._maxSteps = self._rng.randint(50, 500)
             self._maxStepsCheckBlocking = self._rng.randint(50, 70)
-            self._set_track()
         self._speedMax = 0.
         # memory leak of torcs
         # ob = self._torcs.reset(relaunch=True)
-        ob = self._torcs.reset(relaunch=(self._episodeCount%137==135))
+        ob = self._torcs.reset(relaunch=(self._episodeCount%300==299))
         self._data_ob = np.zeros((29, 4), dtype=np.float32)
         return self._selectOb(ob)
 
     def _selectOb(self, ob):
         self._ob_orig = ob
         if self._isTrain:
-            
             self._histObs.append(ob)
-        ret = np.hstack((ob.angle, ob.focus.min(), ob.damage/1500. , ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
-        #ret = np.hstack((ob.angle,  ob.trackPos, ob.speedX, ob.speedY, ob.speedZ,ob.rpm))
-        
+        ret = np.hstack((ob.angle, ob.track, ob.trackPos, ob.speedX, ob.speedY, ob.speedZ, ob.wheelSpinVel / 100.0, ob.rpm))
         ret = ret.astype(np.float32)
         # self._data_ob[:, :-1] = self._data_ob[:, 1:]
         # self._data_ob[:, -1] = ret
@@ -100,24 +67,17 @@ class AgentTorcs(AgentBase):
 
     def _step(self, predict):
         action, value = predict
-        logger.info("output from model  ={}".format(action))
-        if self._infer :    
-            action[2]=0
-            if self._ob_orig.speedX*300 < 40:
-                action[1] = 0.3
-            inferaction=action
-        
-        assert (len(action.shape) == 1 and action.shape[0] == 3)
+        assert (len(action.shape) == 1 and action.shape[0] == 2)
         act_save = np.zeros_like(action)
         act_save[:] = action[:]
+        action[1] = 0.5
         if self._isTrain:
-            # action[1] = 0.5
-            self._exploreEpisode -= self._exploreDecay
-            #action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
-            #action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[1], 0.5 , 1.00, 0.10)
-            action[2]=0
-            if random.random() <= 0.10:
-                action[2] = max(self._exploreEpisode, 0) * self._ouProcess(action[2], 0.2 , 1.00, 0.10)
+            # self._exploreEpisode -= self._exploreDecay
+            # action[0] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.0, 0.60, 0.30)
+            # if action[1] >= 0:
+            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], 0.5 , 1.00, 0.10)
+            # else:
+            #     action[1] = max(self._exploreEpisode, 0) * self._ouProcess(action[0], -0.1, 1.00, 0.05)
             # 能否在初期得到比较好的reward决定了收敛的快慢，所以此处加入一些先验
             # 新手上路，方向盘保守一点，带点油门，不踩刹车
             if action[1] < 0 and len(self._histObs) >= 10:
@@ -141,13 +101,7 @@ class AgentTorcs(AgentBase):
             # elif self._speedMax < (200/300.):
             #     action[0] = np.clip(action[0], -0.3, 0.3)
 
-        
-        if self._infer :
-            ob, _reward, is_over, info = self._torcs.step(inferaction)
-        else:
-            ob, _reward, is_over, info = self._torcs.step(action)
-
-        print(ob)
+        ob, _reward, is_over, info = self._torcs.step(action)
         reward = 0.
         border = 1.2
         speed = ob.speedX * 300.
@@ -162,16 +116,7 @@ class AgentTorcs(AgentBase):
         logger.info("steering loss = {:.04f}, steering={:.4f}, trackPos={:.4f}".format(steeringLoss, action[0], ob.trackPos))
         reward -= steeringLoss
 
-        # if self._episodeSteps <= 30 and 
-        if ob.damage > 155.:
-            reward = -5
-        if ob.damage > 845. :
-            reward = -10
-        if ob.damage >  1450. :
-            is_over = True
-            tf.Print(ob.damage, [ob.damage], 'damage over is  = ')
-            logger.info("damage ={}".format(ob.damage))
-
+        # if self._episodeSteps <= 30 and ob.damage > 0.:
         #     is_over = True
         if self._speedMax < ob.speedX: self._speedMax = ob.speedX
         # if self._speedMax >= (50 / 300.) and ob.speedX <= (15. / 300.):  #
@@ -193,11 +138,9 @@ class AgentTorcs(AgentBase):
         if trackLoss < -1e-4 or trackPosLoss < -1e-4:
             # 不奖励离开车道的行为
             # reward  = -0.1
-            if self._speedMax < (1./300.):
+            if self._speedMax < (60./300.):
                 reward = -1.
                 is_over = True
-                tf.Print(self._speedMax, [self._speedMax], '_speedMax over is  = ')
-
         #     if reward >= 0.: reward *= 0.5
         #     if trackLoss < 0:
         #         reward += trackLoss

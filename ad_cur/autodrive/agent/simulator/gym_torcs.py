@@ -9,7 +9,6 @@ import os
 import subprocess
 import time
 import signal
-import tensorflow as tf
 
 from ...utils import logger
 
@@ -49,7 +48,9 @@ class TorcsEnv:
 
     def start_torcs_process(self, force = False):
         if (not force) and TorcsEnv.checkEnvExist(self._ident): return
-        logdir = '/tmp/torcs_run'
+        import os
+        logdir = os.path.expanduser('~/tmp/torcs_run')
+        if not os.path.exists(logdir): os.makedirs(logdir)
         pidfile = logdir + '/{:03d}.pid'.format(self._ident)
         pid = -1
         if self.torcs_proc is not None:
@@ -62,7 +63,9 @@ class TorcsEnv:
                 os.killpg(os.getpgid(pid), signal.SIGKILL)
             except ProcessLookupError:
                 pass
-            time.sleep(1)
+            except PermissionError:
+                pass
+            time.sleep(0.5)
             logger.info("torcs {} is killed".format(pid))
             self.torcs_proc = None
         window_title = str(self.port)
@@ -72,7 +75,7 @@ class TorcsEnv:
         # self._set_track()
 
         import filelock
-        lockfile = '/tmp/.torcs_autorestart'
+        lockfile = logdir + '/.torcs_autorestart'
         try:
             lock = filelock.FileLock(lockfile)
             with lock.acquire(30):
@@ -93,13 +96,13 @@ class TorcsEnv:
                             f.writelines([str(self.torcs_proc.pid)])
                             f.flush()
 
-                time.sleep(1.3)
+                time.sleep(1.)
                 cmd = 'sh {}/autostart.sh {}'.format(os.path.dirname(__file__), window_title)
                 if self.winpos is not None:
                     assert(len(self.winpos) == 2)
                     cmd += ' {} {}'.format(self.winpos[0], self.winpos[1])
                 os.system(cmd)
-                time.sleep(1.3)
+                time.sleep(1.)
         except filelock.Timeout:
             logger.error("can not lock file {}".format(lockfile))
 
@@ -119,9 +122,9 @@ class TorcsEnv:
 
         ##print("launch torcs")
 
-        time.sleep(0.5)
+            # time.sleep(0.5)
         self.start_torcs_process()
-        time.sleep(0.5)
+            # time.sleep(0.5)
 
         """
         # Modify here if you use multiple tracks in the environment
@@ -252,7 +255,6 @@ class TorcsEnv:
         if np.cos(obs['angle']) < 0: # Episode is terminated if the agent runs backward
             episode_terminate = True
             client.R.d['meta'] = True
-            tf.Print(obs['angle'], [obs['angle']], 'angle over is = ')
 
 
         if client.R.d['meta'] is True: # Send a reset signal
@@ -306,12 +308,10 @@ class TorcsEnv:
 
     def agent_to_torcs(self, u):
         accel = brake = 0
-        # if u[1] > 0:
-        #     accel = u[1]
-        # else:
-        #     brake = -u[1]
-        accel = u[1]
-        brake = u[2]
+        if u[1] > 0:
+            accel = u[1]
+        else:
+            brake = -u[1]
         torcs_action = {'steer': u[0], 'accel': accel, 'brake': brake}
         return torcs_action
 
@@ -339,7 +339,8 @@ class TorcsEnv:
                      'rpm',
                      'track',
                      'trackPos',
-                     'wheelSpinVel']
+                     'wheelSpinVel',
+                     'distRaced']
             Observation = col.namedtuple('Observaion', names)
             return Observation(focus=np.array(raw_obs['focus'], dtype=np.float32)/200.,
                                speedX=np.array(raw_obs['speedX'], dtype=np.float32)/300.0,
@@ -351,7 +352,9 @@ class TorcsEnv:
                                rpm=np.array(raw_obs['rpm'], dtype=np.float32)/10000,
                                track=np.array(raw_obs['track'], dtype=np.float32)/200.,
                                trackPos=np.array(raw_obs['trackPos'], dtype=np.float32)/1.,
-                               wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32))
+                               wheelSpinVel=np.array(raw_obs['wheelSpinVel'], dtype=np.float32),
+                               distRaced=np.array(raw_obs['distRaced'], dtype=np.float32),
+                               )
         else:
             assert(0)
             names = ['focus',

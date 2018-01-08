@@ -80,7 +80,9 @@ class SimulatorProcessStateExchange(SimulatorProcessBase):
         # s2c_socket.set_hwm(5)
         s2c_socket.connect(self.s2c)
 
-        state = player.current_state()
+        # state = player.reset()
+        state=player.reset()
+        assert state is not None, state
         action = None
         reward, isOver = 0, False
         while True:
@@ -88,8 +90,8 @@ class SimulatorProcessStateExchange(SimulatorProcessBase):
                 (self.identity, state, action, reward, isOver)),
                 copy=False)
             pred = loads(s2c_socket.recv(copy=False).bytes)
-            action, reward, isOver = player.action(pred)
-            state = player.current_state()
+            action, value = pred
+            state, action, reward, isOver = player.step((action, value, [0., 0.], [0., 0.]))
 
 
 # compatibility

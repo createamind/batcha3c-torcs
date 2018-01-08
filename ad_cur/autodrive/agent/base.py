@@ -7,23 +7,11 @@ from ..utils import logger
 
 from .memory import Memory, MemorySaver
 from ..utils import logger
-class AgentBase(GymEnv):
-    def __init__(self, agentIdent, is_train=False, auto_restart = True, **kwargs):
-        # super(AgentBase, self).__init__(name='torcs')
-        self.auto_restart = auto_restart
-        self._isTrain = is_train
-        self._agentIdent = agentIdent
-        self._kwargs = kwargs
-        self._init()
-
+from drlutils.agent.base import AgentBase
+class AgentADBase(AgentBase):
     def _init(self):
+        super(AgentADBase, self)._init()
         logger.info("[{}]: agent init, isTrain={}".format(self._agentIdent, self._isTrain))
-        self._episodeCount = -1
-        from tensorpack.utils.utils import get_rng
-        self._rng = get_rng(self)
-        from tensorpack.utils.stats import StatCounter
-        self.reset_stat()
-        self.rwd_counter = StatCounter()
         self._memorySaver = None
         save_dir = self._kwargs.pop('save_dir', None)
         if save_dir is not None:
@@ -31,51 +19,16 @@ class AgentBase(GymEnv):
                                             self._kwargs.pop('max_save_item', 3),
                                             self._kwargs.pop('min_save_score', None),
                                             )
-        self.restart_episode()
-        pass
-
-    def restart_episode(self):
-        self.rwd_counter.reset()
-        self.__ob = self.reset()
-
-    def finish_episode(self):
-        score = self.rwd_counter.sum
-        self.stats['score'].append(score)
-        logger.info("episode finished, rewards = {:.3f}, episode = {}, steps = {}"
-                    .format(score, self._episodeCount, self._episodeSteps))
-
-    def current_state(self):
-        return self.__ob
-
     def reset(self):
-        self._episodeCount += 1
-        ret = self._reset()
-        self._episodeRewards = 0.
-        self._episodeSteps = 0
-        if self._memorySaver:
+        if self._isTrain and self._memorySaver:
             self._memorySaver.createMemory(self._episodeCount)
-        logger.info("restart, episode={}".format(self._episodeCount))
-        return ret
+        return super(AgentADBase, self).reset()
 
-    @abc.abstractmethod
-    def _reset(self):
-        pass
-
-    def action(self, pred):
-        ob, act, r, isOver, info = self._step(pred)
-        self.rwd_counter.feed(r)
-        if self._memorySaver:
+    def step(self, pred):
+        ob, act, r, isOver = super(AgentADBase, self).step(pred)
+        if self._isTrain and self._memorySaver:
             self._memorySaver.addCurrent(ob, act, r, isOver)
-        self.__ob = ob
-        self._episodeSteps += 1
-        self._episodeRewards += r
-        if isOver:
-            self.finish_episode()
-            if self.auto_restart:
-                self.restart_episode()
-        if not self._isTrain:
-            return r, isOver
-        return act, r, isOver
+        return ob, act, r, isOver
 
     @abc.abstractmethod
     def _step(self, action):
@@ -86,6 +39,26 @@ class AgentBase(GymEnv):
         # spc = self.gymenv.action_space
         # assert isinstance(spc, gym.spaces.discrete.Discrete)
         # return DiscreteActionSpace(spc.n)
+    def play_one_episode(self, func, stat='score'):
+        """ Play one episode for eval.
+
+                Args:
+                    func: the policy function. Takes a state and returns an action.
+                    stat: a key or list of keys in stats to return.
+                Returns:
+                    the stat(s) after running this episode
+                """
+        if not isinstance(stat, list):
+            stat = [stat]
+        while True:
+            s = self.current_state()
+            act = func(s)
+            act, r, isOver = self.action(act)
+            # print r
+            if isOver:
+                s = [self.stats[k] for k in stat]
+                self.reset_stat()
+                return s if len(s) > 1 else s[0]
 
 class AgentMemoryReplay(AgentBase):
     def _init(self):

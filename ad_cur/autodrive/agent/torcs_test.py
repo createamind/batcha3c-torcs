@@ -1,7 +1,7 @@
 #coding: utf-8
 import numpy as np
 
-from autodrive import logger
+from ad_cur.autodrive import logger
 from .torcs import AgentTorcs
 
 

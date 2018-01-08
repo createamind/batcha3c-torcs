@@ -1,4 +1,4 @@
-#coding: utf-8
+ #coding: utf-8
 import numpy as np
 from ..utils import logger
 class Memory(object):
@@ -78,7 +78,8 @@ class MemorySaver(object):
 
     def addCurrent(self, state, action, reward, isOver):
         curMemory = self._memoryCurrent
-        curMemory.add(state, action, reward)
+        if curMemory:
+            curMemory.add(state, action, reward)
         if not isOver: return
         if self._min_save_score is not None and curMemory.score < self._min_save_score:
             logger.info("drop memory for score {:.3f} < min_save_score {:.3f}".format(curMemory.score, self._min_save_score))

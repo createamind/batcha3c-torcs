@@ -12,7 +12,8 @@ import tensorflow as tf
 #                     play_one_episode, play_n_episodes)
 from autodrive.utils import logger
 from simulator import *
-from six.moves import queue
+# from six.moves import queue
+import queue
 # from agent.torcs import AgentTorcs
 if six.PY3:
     from concurrent import futures
@@ -26,7 +27,7 @@ STEPS_PER_EPOCH = 500
 EVAL_EPISODE = 0
 BATCH_SIZE = 32
 PREDICT_BATCH_SIZE = 8     # batch for efficient forward
-SIMULATOR_PROC = 16
+SIMULATOR_PROC = 2
 PREDICTOR_THREAD_PER_GPU = 2
 PREDICTOR_THREAD = None
 INIT_LEARNING_RATE_A = 1e-4
@@ -37,7 +38,8 @@ NUM_ACTIONS = None
 
 from autodrive.agent.torcs import AgentTorcs
 from autodrive.agent.fake import AgentFake
-clsAgent = AgentTorcs
+from autodrive.agent.torcs2 import AgentTorcs2
+clsAgent = AgentTorcs2
 # clsAgent = AgentFake
 def get_player(agentIdent, viz=False, train=False, dumpdir=None):
     # 由于单机运行torcs实例有限，为了防止某些情况下所有agent产生样本相关性太大，此处加入同样数目的
@@ -45,11 +47,8 @@ def get_player(agentIdent, viz=False, train=False, dumpdir=None):
     import os
     save_dir_top = os.path.expanduser('~/tmp/torcs/memory')
     if agentIdent < SIMULATOR_PROC:
-        pl = clsAgent(agentIdent, is_train=train,
-                      save_dir = '{}/{:04d}'.format(save_dir_top, agentIdent),
-                      min_save_score = 50.,
-                      max_save_item = 3,
-                      )
+        pl =  clsAgent(agentIdent, bots=['scr_server'], track='road/g-track-1', text_mode=False, laps=3, torcsIdxOffset=0, screen_capture = False, timeScale = 0.25)
+        pl.reset()
     else:
         from autodrive.agent.base import AgentMemoryReplay
         pl = AgentMemoryReplay(agentIdent, is_train=train,
@@ -80,8 +79,8 @@ from tensorpack.tfutils.gradproc import SummaryGradient, GlobalNormClip, MapGrad
 from tensorpack.tfutils import optimizer
 class Model(ModelDesc):
     def _get_inputs(self):
-        return [InputDesc(tf.float32, (None,12), 'state'),
-                InputDesc(tf.float32, (None,3), 'action'),
+        return [InputDesc(tf.float32, (None,37), 'state'),
+                InputDesc(tf.float32, (None,2), 'action'),
                 InputDesc(tf.float32, (None,), 'futurereward'),
                 InputDesc(tf.float32, (None,), 'advantage'),
                 # InputDesc(tf.float32, (None,), 'action_prob'),
@@ -111,26 +110,26 @@ class Model(ModelDesc):
         with tf.variable_scope('actor') as vs:
             l = tf.stop_gradient(l)
             mu_steering = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-steering')
-            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-accel')
-            mu_brake = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-brake')
-            mus = tf.concat([mu_steering, mu_accel, mu_brake], axis=-1,name='infer_actions')
+            mu_accel = tf.layers.dense(l, 1, activation=tf.nn.tanh, name='fc-mu-accel')
+            # mu_brake = tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-mu-brake')
+            mus = tf.concat([mu_steering, mu_accel], axis=-1,name='infer_actions')
             # mus = tf.layers.dense(l, 2, activation=tf.nn.tanh, name='fc-mus')
             # sigmas = tf.layers.dense(l, 2, activation=tf.nn.softplus, name='fc-sigmas')
             # sigmas = tf.clip_by_value(sigmas, -0.001, 0.5)
             sigma_steering_ = 0.5 * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-steering')
             sigma_accel_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-accel')
-            sigma_brake_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-brake')
+            # sigma_brake_ = 1. * tf.layers.dense(l, 1, activation=tf.nn.sigmoid, name='fc-sigma-brake')
             # sigma_beta_steering = symbolic_functions.get_scalar_var('sigma_beta_steering', 0.3, summary=True, trainable=False)
             # sigma_beta_accel = symbolic_functions.get_scalar_var('sigma_beta_accel', 0.3, summary=True, trainable=False)
 
             if ctx.name.startswith("tower"):
                 sigma_beta_steering_exp = tf.train.exponential_decay(0.3, global_step, 1000, 0.5, name='sigma/beta/steering/exp')
                 sigma_beta_accel_exp = tf.train.exponential_decay(0.5, global_step, 5000, 0.5, name='sigma/beta/accel/exp')
-                sigma_beta_brake_exp = tf.train.exponential_decay(0.1, global_step, 5000, 0.5, name='sigma/beta/brake/exp')
+                # sigma_beta_brake_exp = tf.train.exponential_decay(0.1, global_step, 5000, 0.5, name='sigma/beta/brake/exp')
             elif ctx.name == '':
                 sigma_beta_steering_exp = 1e-4
                 sigma_beta_accel_exp = 1e-4
-                sigma_beta_brake_exp = 1e-4
+                # sigma_beta_brake_exp = 1e-4
             else: assert(0)
 
             # sigma_steering = tf.minimum(sigma_steering_ + sigma_beta_steering, 0.5)
@@ -138,10 +137,10 @@ class Model(ModelDesc):
             # sigma_steering = sigma_steering_
             sigma_steering = (sigma_steering_ + sigma_beta_steering_exp)
             sigma_accel = (sigma_accel_ + sigma_beta_accel_exp) #* 0.1
-            sigma_brake = (sigma_brake_ + sigma_beta_brake_exp)
+            # sigma_brake = (sigma_brake_ + sigma_beta_brake_exp)
             # sigma_steering = sigma_steering_
             # sigma_accel = sigma_accel_
-            sigmas = tf.concat([sigma_steering, sigma_accel, sigma_brake], axis=-1)
+            sigmas = tf.concat([sigma_steering, sigma_accel], axis=-1)
             #     sigma_steering = tf.clip_by_value(sigma_steering, 0.1, 0.5)
 
             #     sigma_accel = tf.clip_by_value(sigma_accel, 0.1, 0.5)
@@ -243,17 +242,17 @@ class Model(ModelDesc):
         self._cost = [loss_policy,
                       loss_value,
                       ]
-        from autodrive.trainer.summary import addParamSummary
-        addParamSummary([('.*', ['rms', 'absmax'])])
-        pred_reward = tf.reduce_mean(self.value, name='predict_reward')
-        advantage = symbf.rms(advantage, name='rms_advantage')
-        summary.add_moving_summary(loss_policy, loss_value,
-                                   loss_entropy,
-                                   pred_reward, advantage,
-                                   loss_l2_regularizer,
-                                   tf.reduce_mean(self.policy[:, 0], name='action/steering/mean'),
-                                   tf.reduce_mean(self.policy[:, 1], name='action/accel/mean'),
-                                    )
+        # from autodrive.trainer.summary import addParamSummary
+        # addParamSummary([('.*', ['rms', 'absmax'])])
+        # pred_reward = tf.reduce_mean(self.value, name='predict_reward')
+        # advantage = symbf.rms(advantage, name='rms_advantage')
+        # summary.add_moving_summary(loss_policy, loss_value,
+        #                            loss_entropy,
+        #                            pred_reward, advantage,
+        #                            loss_l2_regularizer,
+        #                            tf.reduce_mean(self.policy[:, 0], name='action/steering/mean'),
+        #                            tf.reduce_mean(self.policy[:, 1], name='action/accel/mean'),
+        #                             )
 
     def _get_cost_and_grad(self):
         from tensorpack.tfutils.gradproc import FilterNoneGrad
@@ -322,6 +321,7 @@ from tensorpack.utils.serialize import dumps
 
 class MySimulatorMaster(SimulatorMaster, Callback):
     def __init__(self, pipe_c2s, pipe_s2c, model):
+        logger.info('master running !!!!')
         super(MySimulatorMaster, self).__init__(pipe_c2s, pipe_s2c)
         self.M = model
         self.queue = queue.Queue(maxsize=BATCH_SIZE * 8 * 2)
@@ -405,6 +405,7 @@ class MySimulatorMaster(SimulatorMaster, Callback):
 
         for idx, k in enumerate(mem):
             #k.action[2]=0
+            # logger.info('put data in queue {}'.format([k.state, k.action, discounted_rewards[idx], advantages[idx]]))
             self.queue.put([k.state, k.action, discounted_rewards[idx], advantages[idx]])
         # mem.reverse()
         # R = float(init_r)
@@ -439,7 +440,7 @@ def get_config():
     namec2s = 'ipc://{}/sim-c2s-{}'.format(PIPE_DIR, name_base)
     names2c = 'ipc://{}/sim-s2c-{}'.format(PIPE_DIR, name_base)
     # AgentTorcs * SIMULATOR_PROC, AgentReplay * SIMULATOR_PROC
-    procs = [MySimulatorWorker(k, namec2s, names2c) for k in range(SIMULATOR_PROC*2)]
+    procs = [MySimulatorWorker(k, namec2s, names2c) for k in range(SIMULATOR_PROC*1)]
     ensure_proc_terminate(procs)
     start_proc_mask_signal(procs)
 
@@ -448,8 +449,9 @@ def get_config():
 
     class CBSyncWeight(Callback):
         def _before_run(self, ctx):
-            if self.local_step % 10 == 0:
+            if self.local_step % 10 == 0 and self.local_step > 1:
                 return [M._sync_op]
+
     import functools
     return TrainConfig(
         model=M,
